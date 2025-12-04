@@ -11,6 +11,7 @@ from lm_eval.utils import calculate_entropy
 from watermark import WatermarkDetector
 from sweet import SweetDetector
 from exp import EXPDetector
+from variable_renaming import rename_variables, apply_rename_attack
 import pdb
 
 _WARNING = """
@@ -67,7 +68,7 @@ class Evaluator:
             )
         return generations, references
 
-    def watermark_detect(self, task_name, generations, watermark_detector):
+    def watermark_detect(self, task_name, generations, watermark_detector, apply_rename_attack_flag=False, rename_strategy='random'):
         task = tasks.get_task(task_name)
         dataset = task.get_dataset()
         n_tasks = self.args.limit if self.args.limit else len(generations)
@@ -87,6 +88,9 @@ class Evaluator:
 
         # for results saving
         result = {"z_threshold": self.args.detection_z_threshold}
+        if apply_rename_attack_flag:
+            result["rename_attack"] = True
+            result["rename_strategy"] = rename_strategy
         detect_list = []
         ent_list = []
         detection_results = []
@@ -104,6 +108,16 @@ class Evaluator:
                         continue
 
                     prefix = prompt_contents[idx]
+                    
+                    # Apply variable renaming attack if enabled
+                    if apply_rename_attack_flag:
+                        # Extract the generated code part (after prefix)
+                        generated_part = gen[len(prefix):]
+                        # Rename variables in the generated code
+                        renamed_generated = rename_variables(generated_part, strategy=rename_strategy)
+                        # Reconstruct the full text with renamed code
+                        gen = prefix + renamed_generated
+                    
                     tokenized_prefix = tokenize(prefix)['input_ids'].squeeze()
                     prefix_len = len(tokenized_prefix)
 
@@ -269,7 +283,17 @@ class Evaluator:
                         json.dump(references, fp)
                         print("references were saved at references.json")
             
-            watermark_detection_results = self.watermark_detect(task_name, generations, watermark_detector)
+            # Apply rename attack if enabled
+            apply_rename = getattr(self.args, 'rename_attack', False)
+            rename_strategy = getattr(self.args, 'rename_strategy', 'random')
+            
+            watermark_detection_results = self.watermark_detect(
+                task_name, 
+                generations, 
+                watermark_detector,
+                apply_rename_attack_flag=apply_rename,
+                rename_strategy=rename_strategy
+            )
 
             # make sure tokenizer plays nice with multiprocessing
             os.environ["TOKENIZERS_PARALLELISM"] = "false"

@@ -194,6 +194,18 @@ def parse_args():
         action="store_true",
         help="Detect human code, NOT generated code",
     )
+    parser.add_argument(
+        "--rename_attack",
+        action="store_true",
+        help="Apply variable renaming attack before watermark detection",
+    )
+    parser.add_argument(
+        "--rename_strategy",
+        type=str,
+        default="random",
+        choices=["random", "sequential", "obfuscate"],
+        help="Strategy for variable renaming: random, sequential, or obfuscate",
+    )
     return parser.parse_args()
 
 
