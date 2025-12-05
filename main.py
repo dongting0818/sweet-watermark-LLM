@@ -1,6 +1,9 @@
 import os
+#cuda <- 2
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 import fnmatch
 import json
+
 
 import datasets
 import torch

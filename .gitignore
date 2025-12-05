@@ -1,0 +1,31 @@
+# Byte-compiled / optimized / DLL files
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+
+# Local output
+OUTPUT_DIRECTORY/
+OUTPUT_DIRECTORY_HUMAN/
+OUTPUT_DIRECTORY_OLD/
+
+# Misc
+*.log
+.DS_Store

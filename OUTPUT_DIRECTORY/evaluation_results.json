@@ -61071,7 +61071,7 @@
         "postprocess": true,
         "allow_code_execution": true,
         "generation_only": false,
-        "load_generations_path": "/nfs/home/ryanyao/sweet-watermark/OUTPUT_DIRECTORY/generations.json",
+        "load_generations_path": "OUTPUT_DIRECTORY/generations.json",
         "outputs_dir": "OUTPUT_DIRECTORY",
         "metric_output_path": "OUTPUT_DIRECTORY/evaluation_results.json",
         "save_generations": false,

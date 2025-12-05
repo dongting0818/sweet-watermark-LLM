@@ -21,7 +21,7 @@ n_sample=40
 # top_p=0.5
 # n_sample=40
 
-accelerate launch main.py \
+accelerate launch --num_processes=1 main.py \
     --model bigcode/starcoderbase-7b \
     --use_auth_token \
     --task $task \
@@ -37,6 +37,3 @@ accelerate launch main.py \
     --outputs_dir OUTPUT_DIRECTORY \
     --sweet \
     --generation_only \
-    --gamma 0.25 \
-    --delta 3.0 \
-    --entropy_threshold 1.2
