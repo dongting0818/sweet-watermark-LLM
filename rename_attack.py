@@ -100,9 +100,8 @@ def parse_args():
                         help='Input JSON file path containing generations')
     parser.add_argument('--output', '-o', type=str, default=None,
                         help='Output JSON file path (auto-generated if not specified)')
-    parser.add_argument('--strategy', '-s', type=str, default='random',
-                        choices=['random', 'sequential', 'obfuscate'],
-                        help='Renaming strategy (default: sequential)')
+    parser.add_argument('--strategy', '-s', type=str, default='default',
+                        help='Renaming strategy (default, random, sequential, obfuscate)')
     parser.add_argument('--ratio', '-r', type=float, default=1.0,
                         help='Proportion of variables to rename, 0.0-1.0 (default: 1.0)')
     parser.add_argument('--seed', type=int, default=42,

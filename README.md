@@ -1,5 +1,13 @@
 # SWEET Watermark 改良方案實作指南
 
+## 實驗結果總覽
+
+![AUROC Comparison](plots/auroc_bar_chart.png)
+
+*圖：不同浮水印方法在變數重命名攻擊下的 AUROC 表現比較*
+
+---
+
 ## 專案概述
 
 ### 研究目標
@@ -339,3 +347,229 @@ python rename_attack.py --input ./OUTPUT_DIRECTORY/generations.json --strategy r
 - `ratio=1.0`: 重命名所有變數（預設）
 - `ratio=0.5`: 隨機選擇 50% 的變數重命名
 - `ratio=0.0`: 不重命名任何變數
+
+---
+
+## 批次攻擊測試
+
+### run_test.sh - 自動化測試腳本
+
+用於批次測試所有方法在不同重命名比例下的魯棒性。
+
+#### 功能特點
+
+- **多方法測試**: 自動遍歷所有浮水印方法（Simple_1, Multi-token, Unigram 等）
+- **多比例攻擊**: 測試 0%, 25%, 50%, 75%, 100% 五種重命名比例
+- **完整流程**: 自動執行重命名攻擊 → 浮水印檢測 → 計算 AUROC/TPR
+- **結果彙總**: 自動生成所有測試結果的摘要
+
+#### 使用方式
+
+```bash
+# 執行完整測試（預設測試所有方法）
+./run_test.sh
+
+# 或使用 bash
+bash run_test.sh
+```
+
+#### 配置參數
+
+編輯 `run_test.sh` 來自訂測試範圍：
+
+```bash
+# 選擇要測試的方法
+METHODS=("DIRECTORY" "MULTITOKEN" "MULTITOKEN5" "UNIGRAM" "CODEBERT")
+
+# 選擇測試的重命名比例
+RATIOS=(0.0 0.25 0.5 0.75 1.0)
+
+# 選擇重命名策略
+STRATEGY="sequential"  # 可選: random, sequential, obfuscate, default
+```
+
+#### 輸出結果
+
+每個測試組合會產生：
+- `OUTPUT_{METHOD}_RENAMED_{RATIO}/generations_renamed_*.json` - 重命名後的代碼
+- `OUTPUT_{METHOD}_RENAMED_{RATIO}/evaluation_results.json` - 檢測結果
+- `OUTPUT_{METHOD}_RENAMED_{RATIO}/metrics.txt` - AUROC 和 TPR 指標
+
+#### 執行時間
+
+- 單一方法單一比例：約 15-20 分鐘
+- 單一方法全部比例 (5個)：約 1.5-2 小時
+- 全部方法全部比例 (5×5=25個)：約 8-10 小時
+
+#### 範例輸出
+
+```
+==========================================
+Processing METHOD: MULTITOKEN5
+==========================================
+
+------------------------------------------
+Testing ratio: 0.5 (50% renaming)
+------------------------------------------
+[1/3] Performing rename attack...
+[2/3] Running watermark detection...
+[3/3] Calculating AUROC and TPR...
+--- Metrics ---
+0.8523
+0.3145
+0.5234
+0.7456
+---------------
+```
+
+---
+
+## 結果視覺化
+
+### show.sh - 自動生成圖表
+
+用於將所有實驗結果視覺化成專業圖表。
+
+#### 功能特點
+
+- **6 種圖表**: AUROC、TPR@0%、TPR@5%、熱力圖、相對降解、全指標對比
+- **自動收集數據**: 從所有 `OUTPUT_*_RENAMED_*/metrics.txt` 讀取結果
+- **高品質輸出**: 300 DPI 高解析度 PNG 圖片
+- **CSV 匯出**: 生成可供 Excel 分析的數據表格
+- **文字摘要**: 在終端機顯示完整結果表格
+
+#### 使用方式
+
+```bash
+# 生成所有圖表
+./show.sh
+
+# 或使用 bash
+bash show.sh
+```
+
+#### 生成的圖表
+
+1. **auroc_vs_ratio.png** - AUROC 隨攻擊比例變化曲線圖
+   - X軸: 變數重命名比例 (0%-100%)
+   - Y軸: AUROC 值
+   - 顯示各方法的魯棒性趨勢
+
+2. **tpr0_vs_ratio.png** - TPR@0%FPR 隨攻擊比例變化
+   - 最嚴格檢測標準下的表現
+   - 適合評估零誤報場景
+
+3. **tpr5_vs_ratio.png** - TPR@5%FPR 隨攻擊比例變化
+   - 較寬鬆檢測標準下的表現
+   - 適合評估實際應用場景
+
+4. **all_metrics.png** - 2×2 子圖顯示所有指標
+   - 一次查看 AUROC、TPR@0%、TPR@1%、TPR@5%
+   - 適合論文投稿或報告使用
+
+5. **auroc_heatmap.png** - AUROC 熱力圖
+   - 行: 浮水印方法
+   - 列: 攻擊比例
+   - 顏色: AUROC 值（綠色高，紅色低）
+
+6. **auroc_degradation.png** - 相對性能降解
+   - 顯示相對於基準的降解百分比
+   - 適合比較不同方法的魯棒性
+
+#### 輸出位置
+
+所有圖表儲存在 `plots/` 目錄：
+```
+plots/
+├── auroc_vs_ratio.png
+├── tpr0_vs_ratio.png
+├── tpr5_vs_ratio.png
+├── all_metrics.png
+├── auroc_heatmap.png
+├── auroc_degradation.png
+└── results_summary.csv
+```
+
+#### 範例輸出（終端機）
+
+```
+================================================================================
+SUMMARY TABLE
+================================================================================
+Method               Ratio    AUROC      TPR@0%     TPR@1%     TPR@5%    
+--------------------------------------------------------------------------------
+Simple_1 (k=1)         0%     0.9242     0.5671     0.6402     0.7012    
+Simple_1 (k=1)        25%     0.8856     0.4512     0.5890     0.6543    
+Simple_1 (k=1)        50%     0.8234     0.3456     0.4789     0.5876    
+...
+--------------------------------------------------------------------------------
+
+Saved: plots/auroc_vs_ratio.png
+Saved: plots/tpr0_vs_ratio.png
+Saved: plots/all_metrics.png
+...
+
+All plots generated successfully!
+```
+
+#### 查看圖表
+
+```bash
+# Linux with eog (Eye of GNOME)
+eog plots/*.png
+
+# 或使用其他圖片檢視器
+display plots/auroc_vs_ratio.png    # ImageMagick
+feh plots/                           # feh
+```
+
+#### CSV 數據格式
+
+`plots/results_summary.csv` 內容範例：
+```csv
+Method,Ratio,AUROC,TPR@0%,TPR@1%,TPR@5%
+Simple_1 (k=1),0,0.924200,0.567100,0.640200,0.701200
+Simple_1 (k=1),25,0.885600,0.451200,0.589000,0.654300
+Multi-token (k=3),0,0.951600,0.493900,0.493900,0.762200
+...
+```
+
+---
+
+## 完整實驗流程
+
+### 從零開始的完整指南
+
+```bash
+# 1. 環境設定
+conda env create -f environment.yml
+conda activate sweet
+
+# 2. 執行各方法的基準測試（無攻擊）
+bash scripts/main/run_sweet_generation.sh
+bash scripts/main/run_sweet_detection.sh
+bash scripts/main/run_sweet_detection_human.sh
+
+bash scripts/main/multitoken_run_sweet_generation.sh
+bash scripts/main/multitoken_run_sweet_detection.sh
+bash scripts/main/multitoken_run_sweet_detection_human.sh
+
+# ... 其他方法類似
+
+# 3. 執行變數重命名攻擊測試
+./run_test.sh
+
+# 4. 生成視覺化圖表
+./show.sh
+
+# 5. 查看結果
+cat plots/results_summary.csv
+eog plots/*.png
+```
+
+### 快速測試（僅測試單一方法）
+
+```bash
+./run_test.sh
+./show.sh
+```

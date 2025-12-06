@@ -103,7 +103,10 @@ class VariableRenamer(ast.NodeTransformer):
         elif self.rename_strategy == 'obfuscate':
             return f'_{"".join(random.choices(string.ascii_lowercase, k=6))}_{self.counter}'
         else:
-            return f'v{self.counter}'
+            b=f'var_{self.counter}'
+            c=f'_{"".join(random.choices(string.ascii_lowercase, k=6))}_{self.counter}'
+            return random.choice([b,c])
+            
     
     def _should_rename(self, name: str) -> bool:
         """Check if a name should be renamed (considering ratio)."""
