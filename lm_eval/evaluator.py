@@ -98,7 +98,6 @@ class Evaluator:
             for idx, gens in tqdm(enumerate(generations), total=len(generations)):
                 n_detection = 0
                 for idx2, gen in enumerate(gens):
-
                     # we don't check all n_samples generations
                     if n_detection >= self.args.n_detection:
                         continue

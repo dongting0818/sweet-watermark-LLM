@@ -5,7 +5,7 @@
       "z_threshold": 4,
       "total_samples": 164,
       "positive_samples": 0,
-      "detection_rate": 0.0,
+      "x": 0.0,
       "mean_entropy": 0.5335075939973688,
       "mean_len": 58.58536585365854,
       "watermarking_fraction": 0.15869920893523293,
