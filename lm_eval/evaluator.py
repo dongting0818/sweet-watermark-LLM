@@ -240,15 +240,21 @@ class Evaluator:
         if self.args.wllm:
             watermark_detector = WatermarkDetector(vocab=list(self.tokenizer.get_vocab().values()),
                                         gamma=self.args.gamma,
+                                        seeding_scheme=self.args.seeding_scheme, #KN added
                                         tokenizer=self.tokenizer,
                                         z_threshold=self.args.detection_z_threshold)
+            if self.args.seeding_scheme == "codebert":
+                watermark_detector.tokenizer_for_decode = self.tokenizer
         
         elif self.args.sweet:
             watermark_detector = SweetDetector(vocab=list(self.tokenizer.get_vocab().values()),
                                         gamma=self.args.gamma,
                                         tokenizer=self.tokenizer,
                                         z_threshold=self.args.detection_z_threshold,
-                                        entropy_threshold=self.args.entropy_threshold)
+                                        entropy_threshold=self.args.entropy_threshold,
+                                        seeding_scheme=self.args.seeding_scheme) #KN added
+            if self.args.seeding_scheme == "codebert":
+                watermark_detector.tokenizer_for_decode = self.tokenizer
         
         elif self.args.exp:
             watermark_detector = EXPDetector(vocab=list(self.tokenizer.get_vocab().values()),

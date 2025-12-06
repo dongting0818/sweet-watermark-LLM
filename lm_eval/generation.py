@@ -67,7 +67,11 @@ def parallel_generations(task, dataset, accelerator, model, tokenizer, n_tasks, 
     if args.wllm:
         watermark_processor = WatermarkLogitsProcessor(vocab=list(tokenizer.get_vocab().values()),
                                                         gamma=args.gamma,
-                                                        delta=args.delta)
+                                                        delta=args.delta,
+                                                        seeding_scheme=args.seeding_scheme)
+        if args.seeding_scheme == "codebert":
+            watermark_processor.tokenizer_for_decode = tokenizer
+                                                    
         gen_kwargs["logits_processor"] = LogitsProcessorList(
             [watermark_processor]
         )
@@ -75,7 +79,11 @@ def parallel_generations(task, dataset, accelerator, model, tokenizer, n_tasks, 
         sweet_processor = SweetLogitsProcessor(vocab=list(tokenizer.get_vocab().values()),
                                                         gamma=args.gamma,
                                                         delta=args.delta,
-                                                        entropy_threshold=args.entropy_threshold)
+                                                        entropy_threshold=args.entropy_threshold,
+                                                        seeding_scheme=args.seeding_scheme)
+        if args.seeding_scheme == "codebert":
+            sweet_processor.tokenizer_for_decode = tokenizer
+            
         gen_kwargs["logits_processor"] = LogitsProcessorList(
             [sweet_processor]
         )

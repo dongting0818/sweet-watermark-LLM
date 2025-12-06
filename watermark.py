@@ -26,6 +26,10 @@ from transformers import LogitsProcessor
 
 from nltk.util import ngrams
 
+from transformers import RobertaTokenizer, RobertaModel
+import hashlib
+
+
 # from normalizers import normalization_strategy_lookup
 
 class WatermarkBase:
@@ -51,6 +55,11 @@ class WatermarkBase:
         self.select_green_tokens = select_green_tokens
         self.entropy_threshold = entropy_threshold
 
+        #for codebert
+        self.codebert_model = None
+        self.codebert_tokenizer = None
+        self.tokenizer_for_decode = None  # Will be set from outside
+
     def _seed_rng(self, input_ids: torch.LongTensor, hash_key: int, seeding_scheme: str = None) -> None:
         # can optionally override the seeding scheme,
         # but uses the instance attr by default
@@ -61,6 +70,96 @@ class WatermarkBase:
             assert input_ids.shape[-1] >= 1, f"seeding_scheme={seeding_scheme} requires at least a 1 token prefix sequence to seed rng"
             prev_token = input_ids[-1].item()
             self.rng.manual_seed(hash_key * prev_token) ### newly change self.hash_key to hash_key ###
+        
+        elif seeding_scheme == "multi_token":   #KN added
+            context_size = min(3, len(input_ids))
+            if context_size == 0:
+                self.rng.manual_seed(hash_key)
+            else:
+                context = input_ids[-context_size:].tolist()
+                seed = hash_key
+                for tok in context:
+                    seed = (seed * 31 + tok) % (2**32)
+                self.rng.manual_seed(seed)
+
+        elif seeding_scheme == "unigram":  # KN added
+        # Uses only hash_key, no context dependency
+        # This creates a single fixed green list for all positions
+            self.rng.manual_seed(hash_key)
+
+        elif seeding_scheme == "codebert":
+            # Use CodeBERT semantic embedding to generate seed
+            context_size = min(10, len(input_ids))
+            
+            if context_size == 0:
+                # Fallback: no context available
+                self.rng.manual_seed(hash_key)
+            else:
+                # Lazy load CodeBERT model
+                if self.codebert_model is None:
+                    from transformers import RobertaModel, RobertaTokenizer
+                    self.codebert_model = RobertaModel.from_pretrained("microsoft/codebert-base")
+                    self.codebert_tokenizer = RobertaTokenizer.from_pretrained("microsoft/codebert-base")
+                    self.codebert_model.eval()
+                    # Move to same device as input_ids if possible
+                    if hasattr(input_ids, 'device'):
+                        self.codebert_model = self.codebert_model.to(input_ids.device)
+                    
+                # Get context tokens
+                context_ids = input_ids[-context_size:].tolist()
+                
+                # Decode tokens back to text (need the original tokenizer)
+                if self.tokenizer_for_decode is not None:
+                    context_text = self.tokenizer_for_decode.decode(context_ids, skip_special_tokens=True)
+                else:
+                    # Fallback: use CodeBERT tokenizer to encode token IDs as text
+                    # This is not ideal but works as emergency fallback
+                    context_text = " ".join([str(tid) for tid in context_ids])
+                
+                # Encode with CodeBERT
+                inputs = self.codebert_tokenizer(
+                    context_text,
+                    return_tensors="pt",
+                    truncation=True,
+                    max_length=512,
+                    padding=False
+                )
+                
+                # Move inputs to model device
+                if hasattr(self.codebert_model, 'device'):
+                    inputs = {k: v.to(self.codebert_model.device) for k, v in inputs.items()}
+                
+                # Get embeddings
+                with torch.no_grad():
+                    outputs = self.codebert_model(**inputs)
+                    # Use mean pooling over all tokens
+                    embeddings = outputs.last_hidden_state.mean(dim=1).squeeze()
+                
+                # Convert embedding to seed using hash
+                embedding_bytes = embeddings.cpu().numpy().tobytes()
+                hash_obj = hashlib.sha256(embedding_bytes)
+                # Combine with hash_key for additional randomness
+                hash_obj.update(hash_key.to_bytes(8, 'big'))
+                # Get first 4 bytes as seed (32-bit integer)
+                seed = int.from_bytes(hash_obj.digest()[:4], 'big')
+                
+                self.rng.manual_seed(seed)
+
+        elif seeding_scheme == "multitoken5":
+            # 5-gram hash (longer context than multi_token)
+            context_size = min(5, len(input_ids))
+            
+            if context_size == 0:
+                # Fallback: no context available
+                self.rng.manual_seed(hash_key)
+            else:
+                # Rolling hash over last 5 tokens
+                context = input_ids[-context_size:].tolist()
+                seed = hash_key
+                for tok in context:
+                    seed = (seed * 31 + tok) % (2**32)
+                self.rng.manual_seed(seed)
+
         else:
             raise NotImplementedError(f"Unexpected seeding_scheme: {seeding_scheme}")
         return
@@ -134,6 +233,19 @@ class WatermarkDetector(WatermarkBase):
 
         if self.seeding_scheme == "simple_1":
             self.min_prefix_len = 1
+
+        elif self.seeding_scheme == "multi_token": #KN added
+            self.min_prefix_len = 3
+
+        elif self.seeding_scheme == "unigram":  # KN added
+            self.min_prefix_len = 0  # No prefix needed since green list is fixed
+
+        elif self.seeding_scheme == "codebert":  # KN added
+            self.min_prefix_len = 10
+
+        elif self.seeding_scheme == "multitoken5":  # KN added
+            self.min_prefix_len = 5
+        
         else:
             raise NotImplementedError(f"Unexpected seeding_scheme: {self.seeding_scheme}")
 

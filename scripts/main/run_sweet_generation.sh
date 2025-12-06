@@ -21,6 +21,7 @@ n_sample=40
 # top_p=0.5
 # n_sample=40
 
+export CUDA_VISIBLE_DEVICES=4
 accelerate launch main.py \
     --model bigcode/starcoderbase-7b \
     --use_auth_token \

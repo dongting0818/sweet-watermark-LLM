@@ -194,6 +194,13 @@ def parse_args():
         action="store_true",
         help="Detect human code, NOT generated code",
     )
+    parser.add_argument(    #KN added
+        "--seeding_scheme",
+        type=str,
+        default="simple_1",
+        choices=["simple_1", "multi_token", "unigram", "codebert", "multitoken5"],
+        help="Seeding scheme for watermark hash function"
+    )
     return parser.parse_args()
 
 
